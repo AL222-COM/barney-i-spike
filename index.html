@@ -100,6 +100,134 @@
   .card:hover {
     transform: translateY(-8px) rotate(-1deg);
   }
+  #koshaCard {
+    cursor: pointer;
+  }
+  #koshaCard.card-shift {
+    transform: translateX(-40px) rotate(-4deg);
+  }
+
+  /* --- сцена с вратами (открывается по клику на карточку Коши) --- */
+  .gate-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 300;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+    padding: 20px;
+  }
+  .gate-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+  .gate-stage {
+    position: relative;
+    width: min(90vw, 360px);
+    height: min(75vh, 440px);
+    overflow: hidden;
+    border-radius: 180px 180px 24px 24px;
+    box-shadow: 0 0 70px rgba(0, 0, 0, 0.65);
+  }
+  .gate-stage.hell {
+    background: linear-gradient(180deg, #3a0000 0%, #100000 100%);
+  }
+  .gate-stage.heaven {
+    background: linear-gradient(180deg, #fff8e1 0%, #ffdf8a 100%);
+  }
+  .gate-glow {
+    position: absolute;
+    inset: 8%;
+    border-radius: 50%;
+    filter: blur(6px);
+  }
+  .gate-stage.hell .gate-glow {
+    background: radial-gradient(circle, #ff7a00 0%, #b30000 55%, transparent 75%);
+  }
+  .gate-stage.heaven .gate-glow {
+    background: radial-gradient(circle, #fffdf0 0%, #ffe082 55%, transparent 75%);
+  }
+  .gate-door {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    z-index: 2;
+    transition: transform 1.1s cubic-bezier(0.22, 0.68, 0.2, 1.05);
+  }
+  .gate-door.left {
+    left: 0;
+    border-right: 3px solid rgba(0, 0, 0, 0.4);
+  }
+  .gate-door.right {
+    right: 0;
+    border-left: 3px solid rgba(0, 0, 0, 0.4);
+  }
+  .gate-stage.hell .gate-door {
+    background: repeating-linear-gradient(90deg, #260000, #260000 12px, #3d0a0a 12px, #3d0a0a 24px);
+  }
+  .gate-stage.heaven .gate-door {
+    background: repeating-linear-gradient(90deg, #f5e6b8, #f5e6b8 12px, #ffd873 12px, #ffd873 24px);
+  }
+  .gate-stage.open .gate-door.left {
+    transform: translateX(-100%);
+  }
+  .gate-stage.open .gate-door.right {
+    transform: translateX(100%);
+  }
+  .gate-decor {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 2.2em;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.6s ease 0.5s;
+    pointer-events: none;
+  }
+  .gate-stage.open .gate-decor {
+    opacity: 1;
+  }
+  .gate-caption {
+    position: absolute;
+    bottom: 16px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    z-index: 5;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+  .gate-stage.hell .gate-caption {
+    color: #ff7a00;
+    text-shadow: 0 0 8px #ff2e2e;
+  }
+  .gate-stage.heaven .gate-caption {
+    color: #b8860b;
+    text-shadow: 0 0 8px #fff3c4;
+  }
+  .gate-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 6;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.85);
+    color: #333;
+    font-size: 1.1em;
+    line-height: 1;
+    cursor: pointer;
+  }
   .avatar {
     margin-bottom: 10px;
     display: flex;
@@ -223,7 +351,7 @@
 </header>
 
 <div class="queen-row">
-  <div class="card">
+  <div class="card" id="koshaCard">
     <div class="avatar">
       <svg viewBox="0 0 120 140" width="150" height="150" aria-label="Рыжая кошка Коша в короне, с жёлтыми глазами">
         <g class="cute-only">
@@ -378,6 +506,17 @@
   <span data-cute="Сделано с " data-demon="Сотворено во тьме с ">Сделано с </span><span class="heart">♥</span><span data-cute=" для Коши и её свиты — Барни и Спайка" data-demon=" для Коши и её адской свиты — Барни и Спайка"> для Коши и её свиты — Барни и Спайка</span>
 </footer>
 
+<div class="gate-overlay" id="gateOverlay">
+  <div class="gate-stage" id="gateStage">
+    <div class="gate-glow"></div>
+    <div class="gate-door left"></div>
+    <div class="gate-door right"></div>
+    <div class="gate-decor" id="gateDecor"></div>
+    <div class="gate-caption" id="gateCaption"></div>
+    <button class="gate-close" id="gateClose" type="button" aria-label="Закрыть">✕</button>
+  </div>
+</div>
+
 <script>
 (function () {
   var STORAGE_KEY = 'petSiteMode';
@@ -416,18 +555,62 @@
     applyMode(demonic);
   }
 
-  // Пасхалка: 5 быстрых кликов по заголовку переключают режим
+  // Пасхалка: в светлой теме нужно 6 быстрых кликов по заголовку, чтобы
+  // включить тёмную; в тёмной теме — 7 кликов, чтобы вернуться в светлую.
   var title = document.getElementById('siteTitle');
   var clicks = 0;
   var timer = null;
   title.addEventListener('click', function () {
     clicks++;
     clearTimeout(timer);
-    timer = setTimeout(function () { clicks = 0; }, 2500);
-    if (clicks >= 5) {
+    timer = setTimeout(function () { clicks = 0; }, 4000);
+    var needed = demonic ? 7 : 6;
+    if (clicks >= needed) {
       clicks = 0;
       toggleMode();
     }
+  });
+
+  // Клик по карточке Коши: в тёмной теме открываются врата ада,
+  // в светлой — врата рая. Сама карточка при этом сдвигается в сторону.
+  var koshaCard = document.getElementById('koshaCard');
+  var gateOverlay = document.getElementById('gateOverlay');
+  var gateStage = document.getElementById('gateStage');
+  var gateDecor = document.getElementById('gateDecor');
+  var gateCaption = document.getElementById('gateCaption');
+  var gateClose = document.getElementById('gateClose');
+
+  function openGate() {
+    gateStage.classList.remove('hell', 'heaven', 'open');
+    if (demonic) {
+      gateStage.classList.add('hell');
+      gateDecor.textContent = '🔥 🔥 🔥';
+      gateCaption.textContent = 'Врата ада открыты';
+    } else {
+      gateStage.classList.add('heaven');
+      gateDecor.textContent = '☁️ ✨ ☁️';
+      gateCaption.textContent = 'Врата рая открыты';
+    }
+    gateOverlay.classList.add('visible');
+    koshaCard.classList.add('card-shift');
+    // класс "open" добавляем на следующем кадре, чтобы сработал переход
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        gateStage.classList.add('open');
+      });
+    });
+  }
+
+  function closeGate() {
+    gateOverlay.classList.remove('visible');
+    gateStage.classList.remove('open');
+    koshaCard.classList.remove('card-shift');
+  }
+
+  koshaCard.addEventListener('click', openGate);
+  gateClose.addEventListener('click', closeGate);
+  gateOverlay.addEventListener('click', function (e) {
+    if (e.target === gateOverlay) closeGate();
   });
 })();
 </script>
